@@ -12,8 +12,10 @@ import copy
 from PyEMD import EMD_matlab as EMDm
 from scipy import signal, interpolate
 from scipy.stats import zscore
-from stochastic.processes.noise import FractionalGaussianNoise
+# from stochastic.processes.noise import FractionalGaussianNoise
 from hurst import compute_Hc
+from fbm import FBM
+from matplotlib import pyplot as plt
 
 def zci(v): 
     """
@@ -21,6 +23,26 @@ def zci(v):
     """ 
     return np.argwhere((v[:]*np.roll(v[:],-1))<=0)
 
+def axvlines(xs, ax=None, lims=None, **plot_kwargs):
+    """ from https://stackoverflow.com/questions/24988448/how-to-draw-vertical-lines-on-a-given-plot
+    Draw vertical lines on plot
+    :param xs: A scalar, list, or 1D array of horizontal offsets
+    :param ax: The axis (or none to use gca)
+    :param lims: Optionally the (ymin, ymax) of the lines
+    :param plot_kwargs: Keyword arguments to be passed to plot
+    :return: The plot object corresponding to the lines.
+    """
+    if ax is None:
+        ax = plt.gca()
+    xs = np.asarray((xs, ) if np.isscalar(xs) else xs)
+    if lims is None:
+        lims = ax.get_ylim()
+    x_points = np.repeat(xs[:, None], repeats=3, axis=1).flatten()
+    y_points = np.repeat(np.asarray(lims + (np.nan, ))
+                         [None, :], repeats=len(xs), axis=0).flatten()
+    plot = ax.plot(x_points, y_points, scaley=False, **plot_kwargs)
+    return plot
+    
 def interp_NAN(X,method='linear'):
     """
     interpolate NAN vales according to the method in the second argument
@@ -122,7 +144,9 @@ def demodulateAmp(sig,symmetric=1,threshNorm=1e-10,maxIterN=5,symN=2):
         
         refSigf=interpolate.PchipInterpolator(extrIdxs, np.abs(extrVals))
         refSig=refSigf(newIdxs)
-    
+        
+        refSig[refSig==0]=np.nextafter(np.float32(0), np.float32(1))
+
         iter_val = np.abs(refSig.sum() - refSig.shape[0])
 
         
@@ -529,7 +553,7 @@ def mEMDdenoise(data,sr,nMasks=22,ampCoeff=2,alpha=0.05,nReps=100,m=16,n=5):
        filteredidx: indexes of IMFs composing the filtered signal
        noiseStd: standard deviation of the estimated noise (sum of the random components).
 """
-    if np.diff(np.shape(data))>0: # be sure that the input signal is a column vector
+    if np.ndim(data)>1 and np.diff(np.shape(data))>0: # be sure that the input signal is a column vector
         data=data.T
     
     data=zscore(data)
@@ -541,16 +565,17 @@ def mEMDdenoise(data,sr,nMasks=22,ampCoeff=2,alpha=0.05,nReps=100,m=16,n=5):
     
     # H0=hurst_exponent(zscore(imf[:,0])) # estimate nois hurst exponent through the first IMF
     H0,_,_=compute_Hc(zscore(imf[:,0]))
-    prdata=FractionalGaussianNoise(hurst=H0, t=1) # generate noise simulation object
+    # prdata=FractionalGaussianNoise(hurst=H0, t=1) # generate noise simulation object
     
     nObs = np.shape(data)[0] # signal length
     nImf = np.shape(imf)[1] #number of IMFs
 
 
     # produce nReps random signals with Hurst exponent set to H0 
+    fGen=FBM(lenData-1, H0)
     f=np.empty((nObs,nReps))
     for i in np.arange(nReps):
-        f[:,i] = prdata.sample(lenData)
+        f[:,i] = fGen.fbm()
     
     noiseLev=np.empty((nReps,nImf));# build storage for energy of the IMFs extracted from the random signals
 
@@ -605,7 +630,7 @@ def getPhaseMask(sigIn,sr,m=16,n=5,nMasks=22,ampCoeff=2, quadMethod=['h','h'], t
         quadMethod (a string or a cell of two strings, default: ['h','h']). Method to be used in the
                 computation of the quadrature signal 'h' stands for Hilbert, 'q' for 
                 direct quadrature and 'cl' for curve length (of the curve drawn by the input 
-                signal and its direct quadrature. If two strings are provided a different method
+                signal and its direct quadrature). If two strings are provided a different method
                 can be adopted in in the first or the second part of the algorithm.  
         threshs (scalar or vector of two positive real values close to zero, default: [1E-10,1E-10]):
             threshold for refined amplitude normalization. If two values, different thresholds

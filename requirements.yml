@@ -2,10 +2,10 @@ channels:
   - conda-forge
 dependencies:
   - scipy>=1.10.1
-  - numpy>=1.25.0
+  - numpy>=2
   - matplotlib>=3.9.2
   - pip
   - pip:
       - emd-signal>=1.6.4
-      - stochastic>=0.6.0
+      - stochastic>=0.7.0
       - hurst>=0.0.5
