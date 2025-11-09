@@ -36,7 +36,7 @@ These functions are stored in the subflders 'get_phase\utils\tbxsSubst\signalPro
 If however the required toolboxes are avialable, it advised to delete the corresponding subfolders.
 
 ## Python:  
-To use the methods proposed in the paper the getPhaseToolsM.py should be accessible to your script (e.g. they should be in the same directory). To install the modules required for the functioning of the script go to the folder containitng the files **requirements.txt** and **requirements.yml**, activate the environment in which you want to install the modules and, depending on the package manager of your choice, type: 
+To use the methods proposed in the paper the file getPhaseToolsM.py should be accessible to your script (e.g. they should be in the same directory). To install the modules required for the functioning of the script go to the folder containitng the files **requirements.txt** and **requirements.yml**, activate the environment in which you want to install the modules and, depending on the package manager of your choice, type: 
 
 pip install -r requirements.txt
 
